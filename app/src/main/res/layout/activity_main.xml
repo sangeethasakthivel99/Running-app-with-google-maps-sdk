@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/rootView"
+    android:background="@android:color/white"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -27,6 +28,7 @@
           android:fontFamily="@font/amarante"
           android:gravity="center_vertical"
           android:text="@string/running_app"
+          android:background="@color/colorPrimary"
           android:textColor="@android:color/white"
           android:textSize="28sp"
           android:textStyle="bold"
@@ -57,7 +59,7 @@
       android:layout_height="56dp"
       app:itemIconTint="@drawable/selector_bottom_nav"
       app:itemTextColor="@drawable/selector_bottom_nav"
-      android:background="@android:color/white"
+      android:background="@drawable/background_bottom_nav"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintHorizontal_bias="0.5"
