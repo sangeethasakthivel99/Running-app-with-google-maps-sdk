@@ -25,6 +25,7 @@
   <string name="average_speed">Average Speed</string>
   <string name="empty_km_h">0km/h</string>
   <string name="start">Start</string>
+  <string name="stop">Stop</string>
   <string name="date">DATE</string>
   <string name="time">TIME</string>
   <string name="distance">DISTANCE</string>

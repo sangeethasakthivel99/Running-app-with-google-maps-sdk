@@ -63,10 +63,12 @@ class TrackingService: LifecycleService() {
                         isFirstRun = false
                     } else {
                         Timber.d("Resumed Activity")
+                        startForegroundService()
                     }
                     Timber.d("started or Resumed Service")
                 }
                 ACTION_PAUSE_SERVICE -> {
+                    pauseService()
                     Timber.d("Paused Service")
                 }
                 ACTION_STOP_SERVICE -> {
@@ -99,6 +101,10 @@ class TrackingService: LifecycleService() {
 
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
 
+    }
+
+    private fun pauseService() {
+        isTracking.postValue(false)
     }
 
     private fun getMainActivityPendingIntent() = PendingIntent.getActivity(this,0,
