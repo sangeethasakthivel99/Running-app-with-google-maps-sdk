@@ -1,5 +1,6 @@
 package com.sangeetha.runningapp.service
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
@@ -7,17 +8,51 @@ import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context
 import android.content.Intent
+import android.location.Location
 import android.os.Build
+import android.os.Looper
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.maps.model.LatLng
 import com.sangeetha.runningapp.*
 import com.sangeetha.runningapp.view.MainActivity
 import timber.log.Timber
 
+typealias PolyLine = MutableList<LatLng>
+typealias PolyLines = MutableList<PolyLine>
+
 class TrackingService: LifecycleService() {
 
     var isFirstRun = true
+    lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+
+    companion object {
+        val isTracking = MutableLiveData<Boolean>()
+        val pathPoints = MutableLiveData<PolyLines>()
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        postInitialValue()
+        fusedLocationProviderClient = FusedLocationProviderClient(this)
+
+        isTracking.observe(this, Observer {
+            updateLocationTracking(it)
+        })
+    }
+
+    private fun postInitialValue() {
+        isTracking.postValue(false)
+        pathPoints.postValue(mutableListOf())
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
@@ -43,6 +78,11 @@ class TrackingService: LifecycleService() {
     }
 
     private fun startForegroundService() {
+
+        addEmptyPolyLine()
+
+        isTracking.postValue(true)
+
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -70,5 +110,54 @@ class TrackingService: LifecycleService() {
     private fun createNotificationChannel(notificationManager: NotificationManager) {
         val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, IMPORTANCE_LOW)
         notificationManager.createNotificationChannel(channel )
+    }
+
+    private fun addEmptyPolyLine() = pathPoints.value?.apply {
+        add(mutableListOf())
+        pathPoints.postValue(this)
+    }?: pathPoints.postValue(mutableListOf(mutableListOf()))
+
+    val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(p0: LocationResult?) {
+            super.onLocationResult(p0)
+            if (isTracking.value!!) {
+                p0?.locations?.let { locations ->
+                    for (location in locations) {
+                        addPathPoint(location)
+                        Timber.d("New Location: ${location.latitude}, ${location.longitude}")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun addPathPoint(location: Location?) {
+        location?.let {
+            val position = LatLng(location.latitude, location.longitude)
+            pathPoints.value?.apply {
+                last().add(position)
+                pathPoints.postValue(this)
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun updateLocationTracking(isTracking: Boolean) {
+        if (isTracking) {
+            if (TrackingUtility.hasLocationPermission(this)) {
+                val requestLocation = LocationRequest().apply {
+                    interval = LOCATION_UPDATE_INTERVAL
+                    fastestInterval = FASTEST_LOCATION_INTERVAL
+                    priority = PRIORITY_HIGH_ACCURACY
+                }
+                fusedLocationProviderClient.requestLocationUpdates(
+                    requestLocation,
+                    locationCallback,
+                    Looper.getMainLooper()
+                )
+            }
+        } else {
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+        }
     }
 }
